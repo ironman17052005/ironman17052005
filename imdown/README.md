@@ -21,12 +21,40 @@ The idea is public. Who is going out tonight is not.
 7. **Send to a group chat** makes a public link. Friends tap "I'm down" from it
    with a first name. No account, no download.
 
+## Finding something to do
+
+- **Search** across the title, area, vibe, steps and tips. Prefixes count, so
+  typing "karao" already finds the karaoke plan, and every word has to match
+  something, so "karaoke bowling" returns nothing rather than both.
+- **Filters**: tonight, saved, under $10/$20/$40, under 2h/3h/5h, and by vibe.
+- **Sorts**: for you, most done, recent, cheapest, quickest. A typed query
+  overrides the sort, because searching means you want the closest match first.
+- **Save** a plan with the star. Saves are private; nobody sees your bookmarks.
+- **🎲** answers "just tell me what to do" with one plan that suits today, drawn
+  from the top of your feed so rolling again gives a different answer.
+
+### How "for you" is ordered
+
+Friends wanting to go beats everything, because it is the only signal that turns
+into an actual night out. The rest breaks ties:
+
+| Signal | Weight | Why |
+| --- | --- | --- |
+| Friends down | up to +9 | The only thing that becomes a real plan. Capped at three so a pile-on cannot bury everything else. |
+| You are down | +1.5 | Keeps your own picks near the top. |
+| Matches your taste | up to +1.2 | Vibes you keep tapping, saving or doing. |
+| Proven | +0.8 × log | Many groups did it. Logged so a 200× plan does not dominate forever. |
+| Recently proven | up to +1.0 | Decays over about a month. |
+| Fits your budget | up to +0.5 | Median of what you usually tap. Neutral until it knows you. |
+| Suits today | +0.4 | Saturday should not lead with a weeknight plan. |
+| You just did it | down to −2.5 | Fades over three weeks so the feed keeps moving. |
+
 ## Run it
 
 ```bash
 npm install
 npm run dev     # app
-npm test        # the rules: 16 unit tests
+npm test        # the rules, search and ranking: 47 unit tests
 npm run lint
 
 # the whole loop in a real browser, against a build
@@ -76,6 +104,7 @@ A second client, or a curl request with the anon key, cannot route around these:
   policy does not recurse into the table it is protecting.
 - **A share link leaks nothing else.** The public page is one function returning
   the outing and the first names on that link. Guests cannot read any table.
+- **Saves are private.** Only you can read your own bookmarks, friends included.
 
 ## What to measure in the first test
 

@@ -100,6 +100,8 @@ export interface Snapshot {
   hangouts: Hangout[]
   shares: Share[]
   guestInterests: GuestInterest[]
+  /** Plans kept for later. Private: nobody sees what you saved. */
+  saved: Id[]
 }
 
 export const MIN_THRESHOLD = 2
@@ -118,6 +120,7 @@ export interface Store {
   addRecap(hangoutId: Id, note: string, photo: string | null): Promise<void>
   createPlan(input: Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>): Promise<void>
   copyPlan(planId: Id): Promise<void>
+  toggleSaved(planId: Id): Promise<void>
   setThreshold(n: number): Promise<void>
   sendFriendRequest(username: string): Promise<string | null>
   acceptFriendRequest(id: Id): Promise<void>

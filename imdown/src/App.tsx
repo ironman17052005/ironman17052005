@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from './data/useStore'
-import { friendTaps, openHangoutFor, rankFeed } from './data/logic'
+import { buildFeed, doneHistory, emptyFilters, friendTaps, isFiltered, openHangoutFor, surprise, type FeedContext, type Filters } from './data/logic'
 import { DemoStore } from './data/demoStore'
 import { Auth } from './components/Auth'
 import { PlanCard } from './components/PlanCard'
@@ -9,6 +9,7 @@ import { FriendsPanel } from './components/FriendsPanel'
 import { AddPlanSheet } from './components/AddPlanSheet'
 import { ShareSheet } from './components/ShareSheet'
 import { SharePage } from './components/SharePage'
+import { FilterBar } from './components/FilterBar'
 import { supabase } from './lib/supabase'
 import type { Plan } from './types'
 
@@ -22,33 +23,79 @@ export default function App() {
   return <Main />
 }
 
+function Skeleton() {
+  return (
+    <div className="space-y-3" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="bg-card border border-line rounded-2xl p-4 space-y-3 animate-pulse">
+          <div className="h-5 w-2/3 bg-card2 rounded" />
+          <div className="h-3 w-1/3 bg-card2 rounded" />
+          <div className="h-3 w-full bg-card2 rounded" />
+          <div className="h-3 w-5/6 bg-card2 rounded" />
+          <div className="h-9 w-full bg-card2 rounded-xl" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Empty({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+  return (
+    <div className="bg-card border border-line rounded-2xl p-6 text-center space-y-2">
+      <div className="font-extrabold">{title}</div>
+      <p className="text-mute text-sm">{body}</p>
+      {action}
+    </div>
+  )
+}
+
 function Main() {
   const { mode, store, snap, needsAuth, error, clearError } = useStore()
   const [tab, setTab] = useState<Tab>('feed')
   const [adding, setAdding] = useState(false)
-  const [filter, setFilter] = useState<string | null>(null)
+  const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [sharing, setSharing] = useState<{ plan: Plan; url: string } | null>(null)
+  const [picked, setPicked] = useState<string | null>(null)
+  const pickedRef = useRef<HTMLDivElement>(null)
 
-  const feed = useMemo(() => {
-    if (!snap) return []
-    const ranked = rankFeed(snap.plans, snap.taps, snap.friends)
-    return filter ? ranked.filter((p) => p.vibe.includes(filter)) : ranked
-  }, [snap, filter])
+  const ctx = useMemo<FeedContext | null>(() => {
+    if (!snap) return null
+    return { meId: snap.me.id, friends: snap.friends, taps: snap.taps, doneAt: doneHistory(snap), saved: snap.saved }
+  }, [snap])
+
+  const feed = useMemo(() => (snap && ctx ? buildFeed(snap.plans, filters, ctx) : []), [snap, ctx, filters])
+
+  // Scroll a surprise pick into view instead of leaving the person hunting for it.
+  useEffect(() => {
+    if (picked) pickedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [picked])
 
   if (needsAuth) return <Auth />
-  if (!snap || !store) {
-    return <div className="p-6 text-mute">{error ? <span className="text-brand">{error}</span> : 'loading…'}</div>
+  if (!snap || !store || !ctx) {
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-3">
+        {error ? <div className="text-brand text-sm">{error}</div> : <Skeleton />}
+      </div>
+    )
   }
 
   const demo = mode === 'demo'
   const open = snap.hangouts.filter((h) => h.status === 'voting' || h.status === 'confirmed')
   const closed = snap.hangouts.filter((h) => h.status === 'done' || h.status === 'flopped')
-  const vibes = Array.from(new Set(snap.plans.flatMap((p) => p.vibe)))
+  const vibes = Array.from(new Set(snap.plans.flatMap((p) => p.vibe))).sort()
   const planOf = (id: string) => snap.plans.find((p) => p.id === id)
 
   const share = async (plan: Plan) => {
     const id = await store.createShare(plan.id)
     setSharing({ plan, url: `${window.location.origin}${window.location.pathname}?s=${id}` })
+  }
+
+  const rollDice = () => {
+    const pick = surprise(snap.plans, ctx)
+    if (!pick) return
+    setFilters(emptyFilters)
+    setTab('feed')
+    setPicked(pick.id)
   }
 
   return (
@@ -66,7 +113,7 @@ function Main() {
       </header>
 
       {error && (
-        <div className="mx-4 mt-3 flex items-start gap-2 text-xs bg-brand/10 border border-brand rounded-xl px-3 py-2">
+        <div role="alert" className="mx-4 mt-3 flex items-start gap-2 text-xs bg-brand/10 border border-brand rounded-xl px-3 py-2">
           <span className="flex-1 text-brand">{error}</span>
           <button onClick={clearError} className="text-brand font-bold">dismiss</button>
         </div>
@@ -82,35 +129,69 @@ function Main() {
       <main className="flex-1 px-4 py-4 space-y-3 pb-24">
         {tab === 'feed' && (
           <>
-            <div className="flex gap-1 overflow-x-auto pb-1 -mx-4 px-4">
-              <button onClick={() => setFilter(null)} className={`shrink-0 text-xs rounded-full px-3 py-1 border ${!filter ? 'border-brand text-brand' : 'border-line text-mute'}`}>all</button>
-              {vibes.map((v) => (
-                <button key={v} onClick={() => setFilter(v === filter ? null : v)} className={`shrink-0 text-xs rounded-full px-3 py-1 border ${filter === v ? 'border-brand text-brand' : 'border-line text-mute'}`}>{v}</button>
-              ))}
-            </div>
+            <FilterBar
+              filters={filters}
+              vibes={vibes}
+              resultCount={feed.length}
+              savedCount={snap.saved.length}
+              onChange={(f) => { setFilters(f); setPicked(null) }}
+              onReset={() => { setFilters(emptyFilters); setPicked(null) }}
+              onSurprise={rollDice}
+            />
+
+            {picked && (
+              <div className="flex items-center justify-between text-xs bg-brand2/10 border border-brand2 rounded-xl px-3 py-2">
+                <span className="text-brand2 font-bold">tonight, do this one</span>
+                <button onClick={rollDice} className="tap text-brand2 underline">roll again</button>
+              </div>
+            )}
+
+            {feed.length === 0 && (
+              <Empty
+                title={isFiltered(filters) ? 'Nothing matches' : 'No plans yet'}
+                body={
+                  isFiltered(filters)
+                    ? 'Try fewer filters, or post the outing you are thinking of.'
+                    : 'Post something you actually did and it becomes the first card.'
+                }
+                action={
+                  <button
+                    onClick={() => (isFiltered(filters) ? setFilters(emptyFilters) : setAdding(true))}
+                    className="tap bg-brand text-black font-bold rounded-xl px-4 py-2 text-sm"
+                  >
+                    {isFiltered(filters) ? 'Clear filters' : 'Post a plan'}
+                  </button>
+                }
+              />
+            )}
 
             {feed.map((p) => {
               const hangout = openHangoutFor(snap, p.id, [snap.me.id, ...snap.friends])
               const joinable = hangout && !hangout.members.includes(snap.me.id) ? hangout.id : null
               const shareIds = snap.shares.filter((s) => s.planId === p.id && s.by === snap.me.id).map((s) => s.id)
+              const isPick = picked === p.id
               return (
-                <PlanCard
-                  key={p.id}
-                  plan={p}
-                  me={snap.me}
-                  people={snap.people}
-                  friendTappers={friendTaps(snap.taps, p.id, snap.friends)}
-                  iTapped={snap.taps.some((t) => t.planId === p.id && t.userId === snap.me.id)}
-                  joinable={joinable}
-                  guestCount={snap.guestInterests.filter((g) => shareIds.includes(g.shareId)).length}
-                  demo={demo}
-                  onTap={() => void store.tap(p.id)}
-                  onUntap={() => void store.untap(p.id)}
-                  onJoin={() => joinable && void store.joinHangout(joinable)}
-                  onShare={() => void share(p)}
-                  onCopy={() => void store.copyPlan(p.id)}
-                  onNudge={() => (store as unknown as DemoStore).nudge(p.id)}
-                />
+                <div key={p.id} ref={isPick ? pickedRef : undefined}>
+                  <PlanCard
+                    plan={p}
+                    me={snap.me}
+                    people={snap.people}
+                    friendTappers={friendTaps(snap.taps, p.id, snap.friends)}
+                    iTapped={snap.taps.some((t) => t.planId === p.id && t.userId === snap.me.id)}
+                    saved={snap.saved.includes(p.id)}
+                    joinable={joinable}
+                    guestCount={snap.guestInterests.filter((g) => shareIds.includes(g.shareId)).length}
+                    demo={demo}
+                    highlight={isPick}
+                    onTap={() => void store.tap(p.id)}
+                    onUntap={() => void store.untap(p.id)}
+                    onJoin={() => joinable && void store.joinHangout(joinable)}
+                    onShare={() => void share(p)}
+                    onCopy={() => void store.copyPlan(p.id)}
+                    onSave={() => void store.toggleSaved(p.id)}
+                    onNudge={() => (store as unknown as DemoStore).nudge(p.id)}
+                  />
+                </div>
               )
             })}
           </>
@@ -118,10 +199,12 @@ function Main() {
 
         {tab === 'hangouts' && (
           <>
-            {open.length === 0 && (
-              <div className="text-mute text-sm bg-card border border-line rounded-2xl p-4">
-                Nothing proposed yet. When {snap.me.threshold} of you are down for the same plan, it lands here with times to vote on.
-              </div>
+            {open.length === 0 && closed.length === 0 && (
+              <Empty
+                title="Nothing proposed yet"
+                body={`When ${snap.me.threshold} of you are down for the same plan, it lands here with times to vote on.`}
+                action={<button onClick={() => setTab('feed')} className="tap bg-brand text-black font-bold rounded-xl px-4 py-2 text-sm">Browse plans</button>}
+              />
             )}
             {open.map((h) => (
               <HangoutCard
@@ -166,7 +249,12 @@ function Main() {
           {(['feed', 'hangouts', 'friends'] as Tab[]).map((t) => {
             const badge = t === 'hangouts' ? open.length : t === 'friends' ? snap.incoming.length : 0
             return (
-              <button key={t} onClick={() => setTab(t)} className={`py-3 text-sm font-bold ${tab === t ? 'text-brand' : 'text-mute'}`}>
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                aria-current={tab === t ? 'page' : undefined}
+                className={`py-3 text-sm font-bold ${tab === t ? 'text-brand' : 'text-mute'}`}
+              >
                 {t}{badge > 0 ? ` (${badge})` : ''}
               </button>
             )

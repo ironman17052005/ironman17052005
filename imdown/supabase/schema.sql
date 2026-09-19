@@ -60,6 +60,14 @@ create table if not exists taps (
   primary key (plan_id, user_id)
 );
 
+-- Plans kept for later. Private to you.
+create table if not exists saves (
+  plan_id uuid not null references plans(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (plan_id, user_id)
+);
+
 do $$ begin
   create type hangout_status as enum ('voting', 'confirmed', 'done', 'flopped');
 exception when duplicate_object then null; end $$;
@@ -359,6 +367,7 @@ alter table slot_votes enable row level security;
 alter table messages enable row level security;
 alter table shares enable row level security;
 alter table guest_interests enable row level security;
+alter table saves enable row level security;
 
 drop policy if exists "profiles readable" on profiles;
 create policy "profiles readable" on profiles for select using (true);
@@ -415,7 +424,15 @@ create policy "guest interests mine" on guest_interests for select
 grant execute on function get_share(text) to anon, authenticated;
 grant execute on function add_guest_interest(text, text) to anon, authenticated;
 
+-- Saves are yours alone. Nobody, friend or not, can see what you bookmarked.
+drop policy if exists "saves mine" on saves;
+create policy "saves mine" on saves for select using (user_id = auth.uid());
+drop policy if exists "saves insert" on saves;
+create policy "saves insert" on saves for insert with check (user_id = auth.uid());
+drop policy if exists "saves delete" on saves;
+create policy "saves delete" on saves for delete using (user_id = auth.uid());
+
 -- Realtime
 do $$ begin
-  alter publication supabase_realtime add table taps, hangouts, hangout_members, time_slots, slot_votes, messages, plans, friend_requests, friendships, guest_interests;
+  alter publication supabase_realtime add table saves, taps, hangouts, hangout_members, time_slots, slot_votes, messages, plans, friend_requests, friendships, guest_interests;
 exception when duplicate_object then null; end $$;

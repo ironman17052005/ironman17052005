@@ -21,9 +21,54 @@ await page.waitForSelector('text=Night market crawl')
 // --- feed shows a full outing, not just a title ---
 const hotpot = page.locator('article', { hasText: 'Hot pot then karaoke' })
 const cost = await hotpot.locator('text=/\\$\\d+\\/person/').innerText()
+await hotpot.getByRole('button', { name: /tips from people who went/ }).click()
 const tip = await hotpot.locator('li', { hasText: 'Put your name down at KBox' }).count()
-log(`card shows ${cost}, tips present: ${tip === 1}`)
+await hotpot.getByRole('button', { name: 'hide tips' }).click()
+log(`card shows ${cost}; tips open on demand: ${tip === 1}`)
 await page.screenshot({ path: `${out}/1-feed.png` })
+
+// --- search narrows the feed, and clearing restores it ---
+const total = await page.locator('article').count()
+await page.getByLabel('Search plans').fill('karaoke')
+await page.waitForFunction((n) => document.querySelectorAll('article').length < n, total)
+const hits = await page.locator('article h3').allInnerTexts()
+log(`search "karaoke" -> ${hits.length} result(s): ${hits.join(', ')}`)
+await page.getByLabel('Search plans').fill('chinatown')
+await page.waitForTimeout(200)
+log(`search by area works: ${(await page.locator('article').count()) > 0}`)
+await page.getByLabel('Search plans').fill('zzzznothing')
+await page.waitForSelector('text=Nothing matches')
+log('a query with no hits shows an empty state')
+await page.getByRole('button', { name: 'Clear filters' }).click()
+await page.waitForTimeout(200)
+log(`clearing restores all ${await page.locator('article').count()} plans`)
+
+// --- cost filter ---
+await page.getByRole('button', { name: /^filters/ }).click()
+await page.getByRole('button', { name: '$10', exact: true }).click()
+await page.waitForTimeout(250)
+const costs = await page.locator('article .text-brand2').allInnerTexts()
+const allCheap = costs.every((c) => c === 'free' || parseInt(c.replace(/\D/g, ''), 10) <= 10)
+log(`under $10 filter leaves only cheap plans: ${allCheap} (${costs.join(', ')})`)
+await page.getByRole('button', { name: 'clear all' }).click()
+await page.waitForTimeout(200)
+
+// --- save a plan, then filter to saved ---
+await page.locator('article').first().getByLabel('Save for later').click()
+await page.waitForTimeout(200)
+await page.getByRole('button', { name: /^saved \(1\)/ }).click()
+await page.waitForTimeout(250)
+log(`saved filter shows ${await page.locator('article').count()} plan`)
+await page.getByRole('button', { name: 'clear all' }).click()
+await page.waitForTimeout(200)
+
+// --- surprise me ---
+await page.getByTitle('Pick something for tonight').click()
+await page.waitForSelector('text=tonight, do this one')
+const highlighted = await page.locator('article.border-brand2').count()
+log(`dice highlighted ${highlighted} plan`)
+await page.getByRole('button', { name: 'roll again' }).click()
+await page.waitForTimeout(300)
 
 // --- friendship needs consent ---
 await page.getByRole('button', { name: /^friends/ }).click()

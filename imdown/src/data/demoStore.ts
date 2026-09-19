@@ -56,6 +56,7 @@ export class DemoStore implements Store {
       hangouts: [],
       shares: [],
       guestInterests: [],
+      saved: [],
     }
   }
 
@@ -198,6 +199,11 @@ export class DemoStore implements Store {
     if (!src) return
     const plan: Plan = { ...src, id: uid(), doneCount: src.doneCount, lastDoneAt: new Date().toISOString(), createdBy: this.snap.me.id }
     this.commit({ ...this.snap, plans: [plan, ...this.snap.plans] })
+  }
+
+  async toggleSaved(planId: Id) {
+    const on = this.snap.saved.includes(planId)
+    this.commit({ ...this.snap, saved: on ? this.snap.saved.filter((id) => id !== planId) : [...this.snap.saved, planId] })
   }
 
   async setThreshold(n: number) {

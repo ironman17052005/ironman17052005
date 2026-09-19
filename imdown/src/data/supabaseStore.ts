@@ -49,7 +49,7 @@ export class SupabaseStore implements Store {
   }
 
   async load(): Promise<Snapshot> {
-    const [meRes, friendsRes, reqRes, plansRes, tapsRes, hangoutsRes, sharesRes, guestRes] = await Promise.all([
+    const [meRes, friendsRes, reqRes, plansRes, tapsRes, hangoutsRes, sharesRes, guestRes, savedRes] = await Promise.all([
       this.sb.from('profiles').select('*').eq('id', this.userId).single(),
       this.sb.from('friendships').select('friend_id').eq('user_id', this.userId),
       this.sb.from('friend_requests').select('*'),
@@ -61,6 +61,7 @@ export class SupabaseStore implements Store {
         .order('created_at', { ascending: false }),
       this.sb.from('shares').select('*'),
       this.sb.from('guest_interests').select('*'),
+      this.sb.from('saves').select('plan_id').eq('user_id', this.userId),
     ])
 
     const meRow = one<any>(meRes, 'load profile')
@@ -71,6 +72,7 @@ export class SupabaseStore implements Store {
     const hangoutRows = rows<any>(hangoutsRes, 'load hangouts')
     const shareRows = rows<any>(sharesRes, 'load shares')
     const guestRows = rows<any>(guestRes, 'load interest')
+    const savedRows = rows<{ plan_id: Id }>(savedRes, 'load saved')
 
     // Everyone we need a name or emoji for, in one round trip.
     const ids = new Set<Id>([this.userId, ...friends])
@@ -119,6 +121,7 @@ export class SupabaseStore implements Store {
       hangouts,
       shares: shareRows.map((s) => ({ id: s.id, planId: s.plan_id, by: s.by_id, at: s.created_at })),
       guestInterests: guestRows.map((g) => ({ shareId: g.share_id, name: g.name, at: g.created_at })),
+      saved: savedRows.map((r) => r.plan_id),
     }
     return this.snap
   }
@@ -152,6 +155,15 @@ export class SupabaseStore implements Store {
   async sendMessage(hangoutId: Id, text: string) {
     const { error } = await this.sb.from('messages').insert({ hangout_id: hangoutId, user_id: this.userId, text })
     if (error) throw new Error(`send message: ${error.message}`)
+    await this.refresh()
+  }
+
+  async toggleSaved(planId: Id) {
+    const on = this.snap?.saved.includes(planId)
+    const { error } = on
+      ? await this.sb.from('saves').delete().eq('plan_id', planId).eq('user_id', this.userId)
+      : await this.sb.from('saves').insert({ plan_id: planId, user_id: this.userId })
+    if (error && error.code !== '23505') throw new Error(`save: ${error.message}`)
     await this.refresh()
   }
 
