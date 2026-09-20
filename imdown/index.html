@@ -4,11 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0b0f" />
+    <meta name="color-scheme" content="dark" />
     <title>i'm down</title>
+    <meta name="description" content="A feed of outings real friend groups actually did. Tap one, and when enough friends are down it proposes a hangout." />
+
+    <!-- Added to a home screen it should open like an app, not a browser tab. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="i'm down" />
+
+    <!-- A shared plan link lands in a group chat, so it needs a preview card. -->
+    <meta property="og:title" content="i'm down" />
+    <meta property="og:description" content="Plans your friends actually did." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5c5c'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' font-family='sans-serif' font-weight='900' fill='%23000'%3E%E2%86%93%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>i'm down needs JavaScript to run.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

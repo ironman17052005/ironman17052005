@@ -86,11 +86,24 @@ force a reply when you want to walk the whole loop.
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor. It is safe to re-run.
-3. Enable email magic links under Authentication.
-4. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-5. `npm run dev`, then sign in. Add friends by `@username`; they must accept.
+3. Run `supabase/seed.sql` once. Skip this and the app opens to an empty feed,
+   which is fatal: nobody posts the first plan into a void. Swap those plans for
+   your own city before launching anywhere but Houston.
+4. Enable email magic links under Authentication.
+5. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+6. `npm run dev`, then sign in. Add friends by `@username`; they must accept.
 
 Deploy anywhere static. Vercel works with zero config.
+
+It installs to a phone home screen and opens without browser chrome, which is how
+you want friends testing it. A shared plan link carries a preview card into a
+group chat.
+
+A render crash shows a recovery screen with a "start fresh" button rather than a
+blank page, since corrupt saved state is the likeliest failure in demo mode.
+
+`.github/workflows/imdown.yml` runs lint, the unit tests, the build and the whole
+browser loop on every push, and keeps the screenshots as an artifact.
 
 ### What the database enforces, not the app
 
@@ -128,7 +141,7 @@ them, and would anyone pay to keep it.
 - No push notifications, so a proposal can sit unseen.
 - No calendar sync. Three fixed time choices, on purpose.
 - Guest interest on a share link is not linked to an account if that guest later signs up.
-- Seed plans are all Houston.
+- Seed plans are all Houston, in both demo and `supabase/seed.sql`.
 - Recap photos are stored inline as data URLs. Shrunk first, but still not a
   substitute for object storage.
 - Every write refetches the whole snapshot in live mode. Fine at prototype scale,

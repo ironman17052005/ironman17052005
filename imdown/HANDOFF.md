@@ -163,16 +163,18 @@ names on that link; saves are private.
 - No push notifications, so a proposal can sit unseen.
 - No calendar sync. Three fixed time choices, on purpose.
 - Guest interest on a share link does not link to an account if the guest signs up later.
-- All seed plans are Houston.
+- All seed plans are Houston, in both demo mode and `supabase/seed.sql`.
 - Recap photos are stored inline as data URLs. Will not scale.
 
-## 8. Current blocker
+## 8. Where the code lives
 
-Three commits are committed locally but **cannot be pushed**. GitHub returns 403:
-Claude does not have access to `ironman17052005/ironman17052005`. Fix by installing
-the Claude GitHub App at `github.com/apps/claude/installations/select_target`, or
-reconnecting GitHub in claude.ai settings. The code is also backed up as a tarball
-and a single-file text bundle.
+Pushed to branch `claude/startup-project-ideas-aqb67o` of
+`ironman17052005/ironman17052005`, in the `imdown/` folder. Nothing was merged;
+`main` is untouched.
+
+(The push was blocked for a while because the GitHub app connected to the account
+was "Claude Design Import", which is read-only. Installing the plain "Claude" app
+fixed it.)
 
 ## 9. Plugin research (Claude Code)
 

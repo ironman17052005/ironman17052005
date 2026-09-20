@@ -27,7 +27,15 @@ export class DemoStore implements Store {
     // instead of letting this tab's copy drift.
     window.addEventListener('storage', (e) => {
       if (e.key !== KEY || !e.newValue) return
-      this.snap = JSON.parse(e.newValue) as Snapshot
+      // Another tab could write anything, including garbage. Parsing it
+      // unguarded would take down every tab that is merely listening.
+      let incoming: Snapshot
+      try {
+        incoming = JSON.parse(e.newValue) as Snapshot
+      } catch {
+        return
+      }
+      this.snap = incoming
       this.listeners.forEach((l) => l())
     })
   }

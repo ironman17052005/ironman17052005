@@ -196,5 +196,26 @@ await guest.goto(`${BASE}?s=doesnotexist`)
 await guest.waitForSelector('text=link expired')
 log('invalid share link shows a clean message')
 
+// --- the app is installable and shares a preview ---
+const manifest = await page.evaluate(async () => {
+  const r = await fetch('/manifest.webmanifest')
+  return r.ok ? (await r.json()).name : null
+})
+const iconOk = await page.evaluate(async () => (await fetch('/icon-192.png')).ok)
+log(`installable: manifest name "${manifest}", icon served: ${iconOk}`)
+
+// --- corrupt saved state does not white-screen ---
+const crash = await ctx.newPage()
+crash.on('pageerror', () => {}) // the crash under test is expected
+await crash.goto(BASE)
+await crash.evaluate(() => localStorage.setItem('imdown.demo.v2', 'not json at all'))
+await crash.reload()
+await crash.waitForSelector('text=that broke')
+log('corrupt saved state shows a recovery screen, not a blank page')
+await crash.getByRole('button', { name: 'Start fresh' }).click()
+await crash.waitForSelector('text=Night market crawl')
+log('"start fresh" clears it and the app comes back')
+await crash.close()
+
 console.log(errors.length ? `ERRORS: ${errors.join(' | ')}` : 'no console/page errors')
 await browser.close()

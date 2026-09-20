@@ -1,0 +1,57 @@
+name: imdown
+
+# Workflows only run from the repository root, so this lives here while the app
+# lives in imdown/. The browser test is the one that catches real breakage, so it
+# runs here too rather than only on someone's laptop.
+on:
+  push:
+    paths: ['imdown/**', '.github/workflows/imdown.yml']
+  pull_request:
+    paths: ['imdown/**', '.github/workflows/imdown.yml']
+
+defaults:
+  run:
+    working-directory: imdown
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: imdown/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install a browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Whole loop in a browser
+        run: |
+          npx vite preview --port 4173 --host 127.0.0.1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:4173 >/dev/null && break
+            sleep 1
+          done
+          npm run e2e
+
+      - name: Keep the screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: imdown/e2e/screenshots/
+          if-no-files-found: ignore
