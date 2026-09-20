@@ -104,6 +104,8 @@ export interface Snapshot {
   saved: Id[]
 }
 
+export type PlanInput = Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>
+
 export const MIN_THRESHOLD = 2
 export const DEFAULT_THRESHOLD = 2
 
@@ -118,8 +120,10 @@ export interface Store {
   sendMessage(hangoutId: Id, text: string): Promise<void>
   markOutcome(hangoutId: Id, happened: boolean): Promise<void>
   addRecap(hangoutId: Id, note: string, photo: string | null): Promise<void>
-  createPlan(input: Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>): Promise<void>
-  copyPlan(planId: Id): Promise<void>
+  createPlan(input: PlanInput): Promise<void>
+  /** Only the person who posted it. Fixing a typo should not need a new card. */
+  updatePlan(planId: Id, input: PlanInput): Promise<void>
+  deletePlan(planId: Id): Promise<string | null>
   toggleSaved(planId: Id): Promise<void>
   setThreshold(n: number): Promise<void>
   sendFriendRequest(username: string): Promise<string | null>

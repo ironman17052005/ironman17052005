@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-import type { Hangout, Id, Plan, Profile, Share, Snapshot, Store } from '../types'
+import type { Hangout, Id, Plan, PlanInput, Profile, Share, Snapshot, Store } from '../types'
 import { shareToken } from './logic'
 
 /** Nothing fails quietly. A dropped vote or message must surface, not look like success. */
@@ -173,26 +173,32 @@ export class SupabaseStore implements Store {
     await this.refresh()
   }
 
-  private planRow(input: Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>, doneCount: number) {
+  private planFields(input: PlanInput) {
     return {
       title: input.title, steps: input.steps, area: input.area, vibe: input.vibe,
       cost_per_person: input.costPerPerson, hours: input.hours, best_time: input.bestTime, tips: input.tips,
-      done_count: doneCount, created_by: this.userId,
     }
   }
 
-  async createPlan(input: Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>) {
-    const { error } = await this.sb.from('plans').insert(this.planRow(input, 1))
+  async createPlan(input: PlanInput) {
+    const { error } = await this.sb.from('plans').insert({ ...this.planFields(input), done_count: 1, created_by: this.userId })
     if (error) throw new Error(`post plan: ${error.message}`)
     await this.refresh()
   }
 
-  async copyPlan(planId: Id) {
-    const src = this.snap?.plans.find((p) => p.id === planId)
-    if (!src) throw new Error('copy plan: not found')
-    const { error } = await this.sb.from('plans').insert(this.planRow(src, src.doneCount))
-    if (error) throw new Error(`copy plan: ${error.message}`)
+  async updatePlan(planId: Id, input: PlanInput) {
+    // The row-level policy also restricts this to the creator, so a crafted
+    // request cannot edit someone else's card.
+    const { error } = await this.sb.from('plans').update(this.planFields(input)).eq('id', planId).eq('created_by', this.userId)
+    if (error) throw new Error(`save plan: ${error.message}`)
     await this.refresh()
+  }
+
+  async deletePlan(planId: Id) {
+    const { data, error } = await this.sb.rpc('delete_plan', { p_plan: planId })
+    if (error) return error.message
+    await this.refresh()
+    return (data as string | null) ?? null
   }
 
   async sendFriendRequest(username: string) {

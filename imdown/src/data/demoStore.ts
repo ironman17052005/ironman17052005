@@ -1,4 +1,4 @@
-import type { Id, Plan, Snapshot, Store } from '../types'
+import type { Id, Plan, PlanInput, Snapshot, Store } from '../types'
 
 import { seedFriends, seedPeople, seedPlans, seedRequesters } from './seed'
 import { applyOutcome, applyVote, resolveTap, shareToken, uid } from './logic'
@@ -17,6 +17,8 @@ export class DemoStore implements Store {
   private snap: Snapshot
   private listeners = new Set<() => void>()
   private timers: ReturnType<typeof setTimeout>[] = []
+  /** Set by the app so a full storage quota surfaces instead of failing silently. */
+  onQuota: (() => void) | null = null
 
   constructor() {
     const saved = localStorage.getItem(KEY)
@@ -80,7 +82,13 @@ export class DemoStore implements Store {
       if (extra.length) next = { ...next, guestInterests: [...next.guestInterests, ...extra] }
     }
     this.snap = next
-    localStorage.setItem(KEY, JSON.stringify(next))
+    try {
+      localStorage.setItem(KEY, JSON.stringify(next))
+    } catch {
+      // Out of browser storage, almost always a recap photo. Keep the app usable
+      // in memory and say so rather than dying on a write nobody asked about.
+      this.onQuota?.()
+    }
     this.listeners.forEach((l) => l())
   }
 
@@ -188,17 +196,32 @@ export class DemoStore implements Store {
     })
   }
 
-  async createPlan(input: Omit<Plan, 'id' | 'doneCount' | 'lastDoneAt' | 'createdBy'>) {
+  async createPlan(input: PlanInput) {
     const plan: Plan = { ...input, id: uid(), doneCount: 1, lastDoneAt: new Date().toISOString(), createdBy: this.snap.me.id }
     this.commit({ ...this.snap, plans: [plan, ...this.snap.plans] })
   }
 
-  /** "Copy this plan": clone someone else's outing into a fresh card you can edit later. */
-  async copyPlan(planId: Id) {
-    const src = this.snap.plans.find((p) => p.id === planId)
-    if (!src) return
-    const plan: Plan = { ...src, id: uid(), doneCount: src.doneCount, lastDoneAt: new Date().toISOString(), createdBy: this.snap.me.id }
-    this.commit({ ...this.snap, plans: [plan, ...this.snap.plans] })
+  async updatePlan(planId: Id, input: PlanInput) {
+    this.commit({
+      ...this.snap,
+      plans: this.snap.plans.map((p) => (p.id === planId && p.createdBy === this.snap.me.id ? { ...p, ...input } : p)),
+    })
+  }
+
+  async deletePlan(planId: Id) {
+    const plan = this.snap.plans.find((p) => p.id === planId)
+    if (!plan || plan.createdBy !== this.snap.me.id) return 'You can only delete a plan you posted.'
+    if (this.snap.hangouts.some((h) => h.planId === planId && (h.status === 'voting' || h.status === 'confirmed'))) {
+      return 'People are already planning this one. Settle it first.'
+    }
+    this.commit({
+      ...this.snap,
+      plans: this.snap.plans.filter((p) => p.id !== planId),
+      taps: this.snap.taps.filter((t) => t.planId !== planId),
+      saved: this.snap.saved.filter((id) => id !== planId),
+      shares: this.snap.shares.filter((sh) => sh.planId !== planId),
+    })
+    return null
   }
 
   async toggleSaved(planId: Id) {

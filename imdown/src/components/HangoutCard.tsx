@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { shrinkImage } from '../lib/image'
 import type { Hangout, Id, Plan, Profile } from '../types'
 import { money } from '../data/logic'
 
@@ -38,12 +39,11 @@ export function HangoutCard({ h, plan, me, people, demo, onVote, onSend, onOutco
   const [label, color] = BADGE[h.status]
   const need = Math.floor(h.members.length / 2) + 1
 
-  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // A straight phone photo is megabytes. Shrink before it is stored inline.
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
-    const r = new FileReader()
-    r.onload = () => setPhoto(String(r.result))
-    r.readAsDataURL(f)
+    setPhoto(await shrinkImage(f))
   }
 
   return (
@@ -113,7 +113,7 @@ export function HangoutCard({ h, plan, me, people, demo, onVote, onSend, onOutco
               <div className="flex gap-2">
                 <label className="tap flex-1 bg-card2 border border-line rounded-xl py-2 text-sm text-center text-mute cursor-pointer">
                   add photo
-                  <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => void pickPhoto(e)} />
                 </label>
                 <button onClick={() => onRecap(note.trim(), photo)} disabled={!note.trim() && !photo} className="tap flex-1 bg-brand text-black font-bold rounded-xl py-2 disabled:opacity-40">Post recap</button>
               </div>

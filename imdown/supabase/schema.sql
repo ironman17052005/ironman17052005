@@ -305,6 +305,20 @@ begin
   update hangouts set recap_note = p_note, recap_photo = p_photo, recap_at = now() where id = p_hangout;
 end $$;
 
+-- Deleting your own card, but not out from under people who are mid-plan.
+create or replace function delete_plan(p_plan uuid) returns text
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if not exists (select 1 from plans where id = p_plan and created_by = auth.uid()) then
+    return 'You can only delete a plan you posted.';
+  end if;
+  if exists (select 1 from hangouts where plan_id = p_plan and status in ('voting', 'confirmed')) then
+    return 'People are already planning this one. Settle it first.';
+  end if;
+  delete from plans where id = p_plan;
+  return null;
+end $$;
+
 -- Public share page: one call, no account, no exposure of anything private.
 create or replace function get_share(p_share text)
 returns table (plan_id uuid, title text, steps text[], area text, vibe text[],
@@ -386,6 +400,9 @@ drop policy if exists "plans readable" on plans;
 create policy "plans readable" on plans for select using (true);
 drop policy if exists "plans insert" on plans;
 create policy "plans insert" on plans for insert with check (created_by = auth.uid());
+-- Only the person who posted a card may change it.
+drop policy if exists "plans update own" on plans;
+create policy "plans update own" on plans for update using (created_by = auth.uid()) with check (created_by = auth.uid());
 
 -- Taps: your own and your friends'. Nobody else sees what you are down for.
 drop policy if exists "taps visible" on taps;

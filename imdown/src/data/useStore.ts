@@ -37,7 +37,13 @@ export function useStore(): State {
   }, [])
 
   const base = useMemo<Store | null>(() => {
-    if (mode === 'demo') return new DemoStore()
+    if (mode === 'demo') {
+      const demo = new DemoStore()
+      // Browser storage is finite; a recap photo can fill it. Say so rather than
+      // letting writes vanish.
+      demo.onQuota = () => setError('Out of browser storage. Recent changes are only in memory. Press reset to clear it.')
+      return demo
+    }
     if (supabase && userId) return new SupabaseStore(supabase, userId)
     return null
   }, [mode, userId])

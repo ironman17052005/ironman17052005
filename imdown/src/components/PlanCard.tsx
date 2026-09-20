@@ -21,6 +21,8 @@ interface Props {
   onCopy: () => void
   onSave: () => void
   onNudge: () => void
+  onEdit: () => void
+  onDelete: () => void
 }
 
 /** Avatars get crowded fast, so show a few faces and count the rest. */
@@ -46,8 +48,9 @@ function Faces({ ids, people, me, mine }: { ids: Id[]; people: Record<Id, Profil
 
 export function PlanCard({
   plan, me, people, friendTappers, iTapped, saved, joinable, guestCount, demo, highlight,
-  onTap, onUntap, onJoin, onShare, onCopy, onSave, onNudge,
+  onTap, onUntap, onJoin, onShare, onCopy, onSave, onNudge, onEdit, onDelete,
 }: Props) {
+  const isMine = plan.createdBy === me.id
   const [showTips, setShowTips] = useState(false)
   const count = friendTappers.length + (iTapped ? 1 : 0)
   const left = Math.max(0, me.threshold - count)
@@ -132,7 +135,9 @@ export function PlanCard({
 
         <div className="flex items-center gap-3 text-xs text-mute">
           <button onClick={onShare} className="tap underline">send to a group chat</button>
-          <button onClick={onCopy} className="tap underline">copy</button>
+          <button onClick={onCopy} className="tap underline">make it mine</button>
+          {isMine && <button onClick={onEdit} className="tap underline">edit</button>}
+          {isMine && <button onClick={onDelete} className="tap underline">delete</button>}
           {guestCount > 0 && <span className="text-brand2">{guestCount} down via your link</span>}
           {demo && iTapped && left > 0 && <button onClick={onNudge} className="tap ml-auto underline opacity-60">nudge (demo)</button>}
         </div>

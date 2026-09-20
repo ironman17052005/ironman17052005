@@ -18,6 +18,8 @@ The idea is public. Who is going out tonight is not.
 5. **We did it** bumps the plan's proof count. **Flopped** just closes it. Either
    way it can only be settled once.
 6. **Recap** adds a line and a photo, with a **Copy this plan** button attached.
+   Photos are shrunk to 1280px before they are stored, since a raw phone photo
+   would fill the browser's storage on its own.
 7. **Send to a group chat** makes a public link. Friends tap "I'm down" from it
    with a first name. No account, no download.
 
@@ -30,6 +32,11 @@ The idea is public. Who is going out tonight is not.
 - **Sorts**: for you, most done, recent, cheapest, quickest. A typed query
   overrides the sort, because searching means you want the closest match first.
 - **Save** a plan with the star. Saves are private; nobody sees your bookmarks.
+- **Make it mine** opens the post form prefilled with someone else's outing. It
+  does not clone the card, so the feed does not fill with near-identical copies
+  nobody edited. A duplicate title is flagged before you post.
+- **Edit and delete** your own plans. Deleting asks first, and refuses while people
+  are mid-plan on that card.
 - **🎲** answers "just tell me what to do" with one plan that suits today, drawn
   from the top of your feed so rolling again gives a different answer.
 
@@ -105,6 +112,8 @@ A second client, or a curl request with the anon key, cannot route around these:
 - **A share link leaks nothing else.** The public page is one function returning
   the outing and the first names on that link. Guests cannot read any table.
 - **Saves are private.** Only you can read your own bookmarks, friends included.
+- **Only the author edits a card.** An update policy and `delete_plan` both check
+  the creator, and deleting is refused while a hangout for it is still open.
 
 ## What to measure in the first test
 
@@ -120,4 +129,7 @@ them, and would anyone pay to keep it.
 - No calendar sync. Three fixed time choices, on purpose.
 - Guest interest on a share link is not linked to an account if that guest later signs up.
 - Seed plans are all Houston.
-- Recap photos are stored inline, which will not scale past a prototype.
+- Recap photos are stored inline as data URLs. Shrunk first, but still not a
+  substitute for object storage.
+- Every write refetches the whole snapshot in live mode. Fine at prototype scale,
+  wasteful past it.

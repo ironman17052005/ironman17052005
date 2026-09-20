@@ -6,12 +6,12 @@ import { Auth } from './components/Auth'
 import { PlanCard } from './components/PlanCard'
 import { HangoutCard } from './components/HangoutCard'
 import { FriendsPanel } from './components/FriendsPanel'
-import { AddPlanSheet } from './components/AddPlanSheet'
+import { AddPlanSheet, type SheetMode } from './components/AddPlanSheet'
 import { ShareSheet } from './components/ShareSheet'
 import { SharePage } from './components/SharePage'
 import { FilterBar } from './components/FilterBar'
 import { supabase } from './lib/supabase'
-import type { Plan } from './types'
+import type { Plan, PlanInput } from './types'
 
 type Tab = 'feed' | 'hangouts' | 'friends'
 
@@ -52,7 +52,7 @@ function Empty({ title, body, action }: { title: string; body: string; action?: 
 function Main() {
   const { mode, store, snap, needsAuth, error, clearError } = useStore()
   const [tab, setTab] = useState<Tab>('feed')
-  const [adding, setAdding] = useState(false)
+  const [sheet, setSheet] = useState<SheetMode | null>(null)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [sharing, setSharing] = useState<{ plan: Plan; url: string } | null>(null)
   const [picked, setPicked] = useState<string | null>(null)
@@ -85,6 +85,18 @@ function Main() {
   const vibes = Array.from(new Set(snap.plans.flatMap((p) => p.vibe))).sort()
   const planOf = (id: string) => snap.plans.find((p) => p.id === id)
 
+  // Deleting is the only irreversible thing in the app, so it asks first.
+  const removePlan = async (plan: Plan) => {
+    if (!window.confirm(`Delete "${plan.title}"? This cannot be undone.`)) return
+    const problem = await store.deletePlan(plan.id)
+    if (problem) window.alert(problem)
+  }
+
+  const submitSheet = async (input: PlanInput) => {
+    if (sheet?.kind === 'edit') await store.updatePlan(sheet.plan.id, input)
+    else await store.createPlan(input)
+  }
+
   const share = async (plan: Plan) => {
     const id = await store.createShare(plan.id)
     setSharing({ plan, url: `${window.location.origin}${window.location.pathname}?s=${id}` })
@@ -108,7 +120,7 @@ function Main() {
         <div className="flex items-center gap-2">
           {demo && <button onClick={() => (store as unknown as DemoStore).reset()} className="text-[11px] text-mute underline">reset</button>}
           {!demo && <button onClick={() => void supabase?.auth.signOut()} className="text-[11px] text-mute underline">sign out</button>}
-          <button onClick={() => setAdding(true)} className="tap bg-card2 border border-line rounded-xl px-3 py-1.5 text-sm font-bold">+ plan</button>
+          <button onClick={() => setSheet({ kind: 'new' })} className="tap bg-card2 border border-line rounded-xl px-3 py-1.5 text-sm font-bold">+ plan</button>
         </div>
       </header>
 
@@ -156,7 +168,7 @@ function Main() {
                 }
                 action={
                   <button
-                    onClick={() => (isFiltered(filters) ? setFilters(emptyFilters) : setAdding(true))}
+                    onClick={() => (isFiltered(filters) ? setFilters(emptyFilters) : setSheet({ kind: 'new' }))}
                     className="tap bg-brand text-black font-bold rounded-xl px-4 py-2 text-sm"
                   >
                     {isFiltered(filters) ? 'Clear filters' : 'Post a plan'}
@@ -187,9 +199,11 @@ function Main() {
                     onUntap={() => void store.untap(p.id)}
                     onJoin={() => joinable && void store.joinHangout(joinable)}
                     onShare={() => void share(p)}
-                    onCopy={() => void store.copyPlan(p.id)}
+                    onCopy={() => setSheet({ kind: 'copy', from: p })}
                     onSave={() => void store.toggleSaved(p.id)}
                     onNudge={() => (store as unknown as DemoStore).nudge(p.id)}
+                    onEdit={() => setSheet({ kind: 'edit', plan: p })}
+                    onDelete={() => void removePlan(p)}
                   />
                 </div>
               )
@@ -213,7 +227,7 @@ function Main() {
                 onSend={(t) => void store.sendMessage(h.id, t)}
                 onOutcome={(ok) => void store.markOutcome(h.id, ok)}
                 onRecap={(n, p) => void store.addRecap(h.id, n, p)}
-                onCopy={() => void store.copyPlan(h.planId)}
+                onCopy={() => { const src = planOf(h.planId); if (src) setSheet({ kind: 'copy', from: src }) }}
                 onNudgeVote={(s) => (store as unknown as DemoStore).nudgeVote(h.id, s)}
               />
             ))}
@@ -224,7 +238,7 @@ function Main() {
                 key={h.id} h={h} plan={planOf(h.planId)} me={snap.me.id} people={snap.people} demo={demo}
                 onVote={() => {}} onSend={() => {}} onOutcome={() => {}}
                 onRecap={(n, p) => void store.addRecap(h.id, n, p)}
-                onCopy={() => void store.copyPlan(h.planId)}
+                onCopy={() => { const src = planOf(h.planId); if (src) setSheet({ kind: 'copy', from: src }) }}
                 onNudgeVote={() => {}}
               />
             ))}
@@ -262,7 +276,14 @@ function Main() {
         </div>
       </nav>
 
-      {adding && <AddPlanSheet onClose={() => setAdding(false)} onCreate={(p) => store.createPlan(p)} />}
+      {sheet && (
+        <AddPlanSheet
+          mode={sheet}
+          existingTitles={snap.plans.map((p) => p.title)}
+          onClose={() => setSheet(null)}
+          onSubmit={submitSheet}
+        />
+      )}
       {sharing && <ShareSheet plan={sharing.plan} url={sharing.url} onClose={() => setSharing(null)} />}
     </div>
   )

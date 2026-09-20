@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Plan } from '../types'
 import { money } from '../data/logic'
 
@@ -15,6 +15,12 @@ interface Props {
  */
 export function ShareSheet({ plan, url, onClose }: Props) {
   const [copied, setCopied] = useState<string | null>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const text = [
     plan.title,
@@ -43,7 +49,7 @@ export function ShareSheet({ plan, url, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-20 bg-black/70 flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="w-full max-w-md bg-card border border-line rounded-t-3xl sm:rounded-3xl p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Send to a group chat" className="w-full max-w-md bg-card border border-line rounded-t-3xl sm:rounded-3xl p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-black">Send to a group chat</h2>
           <button onClick={onClose} className="text-mute">close</button>

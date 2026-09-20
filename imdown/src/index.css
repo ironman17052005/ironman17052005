@@ -21,3 +21,14 @@ body {
 }
 .tap { transition: transform .08s ease; }
 .tap:active { transform: scale(.96); }
+
+/* Keyboard users need to see where they are; mouse users should not. */
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
