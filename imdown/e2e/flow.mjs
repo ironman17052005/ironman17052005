@@ -217,5 +217,21 @@ await crash.waitForSelector('text=Night market crawl')
 log('"start fresh" clears it and the app comes back')
 await crash.close()
 
+// --- it still opens with no connection ---
+const off = await ctx.newPage()
+await off.goto(BASE)
+await off.evaluate(() => navigator.serviceWorker.ready.then(() => undefined))
+await off.reload() // the second load is the one the worker controls
+await off.waitForSelector('text=Night market crawl')
+const controlled = await off.evaluate(() => !!navigator.serviceWorker.controller)
+
+await ctx.setOffline(true)
+await off.reload()
+await off.waitForSelector('text=Night market crawl', { timeout: 10000 })
+const offlineCount = await off.locator('article').count()
+log(`offline: worker in control ${controlled}, feed still renders ${offlineCount} plans with no connection`)
+await ctx.setOffline(false)
+await off.close()
+
 console.log(errors.length ? `ERRORS: ${errors.join(' | ')}` : 'no console/page errors')
 await browser.close()

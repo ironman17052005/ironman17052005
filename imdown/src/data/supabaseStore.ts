@@ -2,6 +2,7 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import type { Hangout, Id, Plan, PlanInput, Profile, Share, Snapshot, Store } from '../types'
 import { shareToken } from './logic'
+import { coalesce, debounce } from '../lib/coalesce'
 
 /** Nothing fails quietly. A dropped vote or message must surface, not look like success. */
 function rows<T>(res: { data: T[] | null; error: PostgrestError | null }, what: string): T[] {
@@ -26,26 +27,38 @@ export class SupabaseStore implements Store {
   private listeners = new Set<() => void>()
   private snap: Snapshot | null = null
 
+  /**
+   * Every write refetches the snapshot and realtime asks for another, so the
+   * same question gets asked several times over. These collapse that into as
+   * few round trips as possible without ever serving a caller a fetch that
+   * started before their own write. See lib/coalesce.ts.
+   */
+  private refresh: () => Promise<void>
+  private onRealtime: (() => void) & { cancel: () => void }
+
   constructor(sb: SupabaseClient, userId: Id) {
     this.sb = sb
     this.userId = userId
+    this.refresh = coalesce(async () => {
+      await this.load()
+      this.listeners.forEach((l) => l())
+    })
+    // One hangout being created arrives as a burst of rows. That is one thing
+    // happening, and it deserves one refresh.
+    this.onRealtime = debounce(() => void this.refresh(), 150)
   }
 
   subscribe(cb: () => void) {
     this.listeners.add(cb)
     const ch = this.sb
       .channel('imdown')
-      .on('postgres_changes', { event: '*', schema: 'public' }, () => void this.refresh())
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => this.onRealtime())
       .subscribe()
     return () => {
       this.listeners.delete(cb)
+      this.onRealtime.cancel()
       void this.sb.removeChannel(ch)
     }
-  }
-
-  private async refresh() {
-    await this.load()
-    this.listeners.forEach((l) => l())
   }
 
   async load(): Promise<Snapshot> {

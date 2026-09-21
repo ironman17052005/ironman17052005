@@ -61,7 +61,7 @@ into an actual night out. The rest breaks ties:
 ```bash
 npm install
 npm run dev     # app
-npm test        # the rules, search and ranking: 47 unit tests
+npm test        # the rules, search, ranking and refresh: 54 unit tests
 npm run test:db # the database rules against a real Postgres: 69 checks
 npm run lint
 
@@ -102,6 +102,13 @@ group chat.
 
 A render crash shows a recovery screen with a "start fresh" button rather than a
 blank page, since corrupt saved state is the likeliest failure in demo mode.
+
+It works with no connection. A service worker caches the shell, so the app opens
+on campus wifi that has dropped, in a car park or in a basement bar, which is
+exactly when someone is checking where everyone is meeting. Content-hashed build
+output is served cache-first; everything else is network-first with a cached
+fallback, so a deploy is picked up as soon as there is signal. Supabase requests
+are never cached, because a stale vote is worse than an error.
 
 `.github/workflows/imdown.yml` runs lint, the unit tests, the build and the whole
 browser loop on every push, and keeps the screenshots as an artifact.
@@ -152,5 +159,7 @@ them, and would anyone pay to keep it.
 - Seed plans are all Houston, in both demo and `supabase/seed.sql`.
 - Recap photos are stored inline as data URLs. Shrunk first, but still not a
   substitute for object storage.
-- Every write refetches the whole snapshot in live mode. Fine at prototype scale,
-  wasteful past it.
+- A write still refetches the whole snapshot in live mode rather than patching it.
+  Overlapping refreshes are collapsed into one round trip and realtime bursts are
+  debounced, so tapping a plan costs one fetch instead of three, but the fetch
+  itself is still the entire snapshot.

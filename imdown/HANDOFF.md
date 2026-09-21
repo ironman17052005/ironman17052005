@@ -130,6 +130,9 @@ imdown/
   src/data/supabaseStore.ts    live mode
   src/data/shareApi.ts         the signed-out share page data path
   src/data/useStore.ts         picks a store, surfaces errors
+  src/lib/coalesce.ts          collapses overlapping refreshes into one round trip
+  src/lib/image.ts             shrinks a recap photo before it is stored
+  public/sw.js                 offline shell
   src/components/              PlanCard, HangoutCard, FilterBar, FriendsPanel,
                                AddPlanSheet, ShareSheet, SharePage, Auth
   supabase/schema.sql          tables, RLS, triggers, RPCs
@@ -138,7 +141,7 @@ imdown/
   e2e/flow.mjs                 browser test of the whole loop
 ```
 
-**Commands.** `npm run dev`, `npm test` (47 unit tests), `npm run test:db` (69
+**Commands.** `npm run dev`, `npm test` (54 unit tests), `npm run test:db` (69
 database checks against a throwaway Postgres), `npm run lint`, `npm run build`,
 `npm run e2e` (needs the preview server running).
 
