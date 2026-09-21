@@ -36,6 +36,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Database rules against real Postgres
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql
+          PGBIN=$(dirname $(ls /usr/lib/postgresql/*/bin/initdb | head -1)) npm run test:db
+
       - name: Install a browser
         run: npx playwright install --with-deps chromium
 

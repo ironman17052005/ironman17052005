@@ -90,7 +90,10 @@ Playwright. Mobile-first, dark, single page, roughly 260 KB JS.
   vote, some never accept a friend request. Commitment is the hard part so the demo
   must not pretend it is free. A "nudge" button forces a reply when you want to walk
   the whole loop.
-- **Live mode**: Supabase with magic-link auth. **Never run against a real project yet.**
+- **Live mode**: Supabase with magic-link auth. The schema, triggers and policies
+  are tested against a real Postgres by `npm run test:db` (69 checks), but the app
+  itself has never been pointed at an actual Supabase project. Magic-link auth and
+  realtime are the untested parts.
 
 **The loop.**
 1. Feed card shows the whole outing: steps, dollars per person, hours, best time, and
@@ -130,10 +133,13 @@ imdown/
   src/components/              PlanCard, HangoutCard, FilterBar, FriendsPanel,
                                AddPlanSheet, ShareSheet, SharePage, Auth
   supabase/schema.sql          tables, RLS, triggers, RPCs
+  supabase/seed.sql            the fifteen plans, so a fresh deploy is not empty
+  supabase/test/               a Supabase stand-in plus 69 rule checks
   e2e/flow.mjs                 browser test of the whole loop
 ```
 
-**Commands.** `npm run dev`, `npm test` (47 tests), `npm run lint`, `npm run build`,
+**Commands.** `npm run dev`, `npm test` (47 unit tests), `npm run test:db` (69
+database checks against a throwaway Postgres), `npm run lint`, `npm run build`,
 `npm run e2e` (needs the preview server running).
 
 ## 6. Rules enforced in Postgres, not the UI
@@ -158,8 +164,8 @@ names on that link; saves are private.
 
 ## 7. Known gaps
 
-- **Live mode has never run against a real Supabase project.** Do that with three
-  separate accounts before trusting anything.
+- **The app has never been pointed at a real Supabase project.** The SQL is tested;
+  magic-link auth and realtime are not. Do that with three separate accounts.
 - No push notifications, so a proposal can sit unseen.
 - No calendar sync. Three fixed time choices, on purpose.
 - Guest interest on a share link does not link to an account if the guest signs up later.

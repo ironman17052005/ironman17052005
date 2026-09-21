@@ -62,6 +62,7 @@ into an actual night out. The rest breaks ties:
 npm install
 npm run dev     # app
 npm test        # the rules, search and ranking: 47 unit tests
+npm run test:db # the database rules against a real Postgres: 69 checks
 npm run lint
 
 # the whole loop in a real browser, against a build
@@ -107,7 +108,11 @@ browser loop on every push, and keeps the screenshots as an artifact.
 
 ### What the database enforces, not the app
 
-A second client, or a curl request with the anon key, cannot route around these:
+A second client, or a curl request with the anon key, cannot route around these.
+Every one is checked by `npm run test:db`, which starts a throwaway Postgres,
+applies this exact schema, and exercises each rule as a different signed-in user.
+Testing them in JavaScript would prove nothing, because the app is not the only
+thing that can talk to the database.
 
 - **Friendship needs consent.** A request sits in `friend_requests` until the
   recipient accepts. Nobody lands in your circle, or sees what you are down for,
@@ -127,6 +132,8 @@ A second client, or a curl request with the anon key, cannot route around these:
 - **Saves are private.** Only you can read your own bookmarks, friends included.
 - **Only the author edits a card.** An update policy and `delete_plan` both check
   the creator, and deleting is refused while a hangout for it is still open.
+- **A guest reads nothing.** Signed out, every table returns zero rows except
+  `plans`, which is the public idea layer. The share page is one function call.
 
 ## What to measure in the first test
 
@@ -136,8 +143,9 @@ them, and would anyone pay to keep it.
 
 ## Known gaps
 
-- Live mode has never been run against a real Supabase project. Do that with three
-  separate accounts before trusting it.
+- The schema, its triggers and its policies are tested against real Postgres, but
+  the app has never been pointed at an actual Supabase project. Magic-link auth and
+  realtime are the untested parts. Try it with three separate accounts.
 - No push notifications, so a proposal can sit unseen.
 - No calendar sync. Three fixed time choices, on purpose.
 - Guest interest on a share link is not linked to an account if that guest later signs up.
