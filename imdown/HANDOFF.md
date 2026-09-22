@@ -91,7 +91,8 @@ Playwright. Mobile-first, dark, single page, roughly 260 KB JS.
   must not pretend it is free. A "nudge" button forces a reply when you want to walk
   the whole loop.
 - **Live mode**: Supabase with magic-link auth. The schema, triggers and policies
-  are tested against a real Postgres by `npm run test:db` (69 checks), but the app
+  are tested against a real Postgres by `npm run test:db` (137 checks), and the
+  client's queries are checked against that schema, but the app
   itself has never been pointed at an actual Supabase project. Magic-link auth and
   realtime are the untested parts.
 
@@ -138,10 +139,12 @@ imdown/
   supabase/schema.sql          tables, RLS, triggers, RPCs
   supabase/seed.sql            the fifteen plans, so a fresh deploy is not empty
   supabase/test/               a Supabase stand-in plus 69 rule checks
+  scripts/contract.mjs         generates 68 more checks from the client source,
+                               so the app and the schema cannot drift apart
   e2e/flow.mjs                 browser test of the whole loop
 ```
 
-**Commands.** `npm run dev`, `npm test` (54 unit tests), `npm run test:db` (69
+**Commands.** `npm run dev`, `npm test` (54 unit tests), `npm run test:db` (137
 database checks against a throwaway Postgres), `npm run lint`, `npm run build`,
 `npm run e2e` (needs the preview server running).
 

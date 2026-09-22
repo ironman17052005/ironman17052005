@@ -36,7 +36,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Database rules against real Postgres
+      - name: Client contract and database rules, against real Postgres
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql

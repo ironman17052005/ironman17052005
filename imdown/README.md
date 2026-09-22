@@ -62,7 +62,7 @@ into an actual night out. The rest breaks ties:
 npm install
 npm run dev     # app
 npm test        # the rules, search, ranking and refresh: 54 unit tests
-npm run test:db # the database rules against a real Postgres: 69 checks
+npm run test:db # the database against a real Postgres: 137 checks
 npm run lint
 
 # the whole loop in a real browser, against a build
@@ -110,16 +110,27 @@ output is served cache-first; everything else is network-first with a cached
 fallback, so a deploy is picked up as soon as there is signal. Supabase requests
 are never cached, because a stale vote is worse than an error.
 
-`.github/workflows/imdown.yml` runs lint, the unit tests, the build and the whole
-browser loop on every push, and keeps the screenshots as an artifact.
+`.github/workflows/imdown.yml` runs lint, the unit tests, the database checks,
+the build and the whole browser loop on every push, keeping the screenshots as
+an artifact.
 
-### What the database enforces, not the app
+### The client and the schema are checked against each other
 
-A second client, or a curl request with the anon key, cannot route around these.
-Every one is checked by `npm run test:db`, which starts a throwaway Postgres,
-applies this exact schema, and exercises each rule as a different signed-in user.
-Testing them in JavaScript would prove nothing, because the app is not the only
-thing that can talk to the database.
+`npm run test:db` starts a throwaway Postgres, applies this exact schema, and
+runs two things against it.
+
+The first is a **contract generated from the app source**. It reads
+`supabaseStore.ts` and `shareApi.ts`, extracts every table, column, embedded
+relationship, filter and RPC argument name the client depends on, and asserts
+each one exists. A column renamed on one side, or an argument called `p_slot`
+here and `p_slot_id` there, type-checks perfectly and then fails at runtime the
+first time a real project is connected, which is the worst place to find it.
+Generating the list rather than maintaining it means the two cannot drift.
+
+The second is the **rules**, below. Every one is exercised as a different
+signed-in user. Testing them in JavaScript would prove nothing, because the app
+is not the only thing that can talk to the database: a second client, or a curl
+request with the anon key, reaches the same tables.
 
 - **Friendship needs consent.** A request sits in `friend_requests` until the
   recipient accepts. Nobody lands in your circle, or sees what you are down for,

@@ -54,6 +54,14 @@ run "$PSQL -d imdown_test -f $HERE/supabase/schema.sql" 2>&1 | grep -vi 'does no
 echo "applying seed.sql"
 run "$PSQL -d imdown_test -f $HERE/supabase/seed.sql" >/dev/null
 
+echo "generating the client contract from the app source"
+node "$HERE/scripts/contract.mjs" > "$HERE/supabase/test/contract.generated.sql"
+[ -n "$RUNAS" ] && chmod a+r "$HERE/supabase/test/contract.generated.sql"
+
+echo "checking the client and the schema agree"
+run "$PSQL -d imdown_test -f $HERE/supabase/test/contract.generated.sql" 2>&1 \
+  | sed -E 's#^psql:[^ ]+: ##; s/^NOTICE:  //'
+
 echo "checking the rules"
 run "$PSQL -d imdown_test -f $HERE/supabase/test/rules.test.sql" 2>&1 \
   | sed -E 's#^psql:[^ ]+: ##; s/^NOTICE:  //'
