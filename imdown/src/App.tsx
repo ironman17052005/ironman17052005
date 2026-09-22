@@ -10,6 +10,7 @@ import { AddPlanSheet, type SheetMode } from './components/AddPlanSheet'
 import { ShareSheet } from './components/ShareSheet'
 import { SharePage } from './components/SharePage'
 import { FilterBar } from './components/FilterBar'
+import { clearInviteFromUrl, forgetInvite, pendingInvite, readInviteFromUrl, rememberInvite } from './lib/invite'
 import { supabase } from './lib/supabase'
 import type { Plan, PlanInput } from './types'
 
@@ -17,6 +18,14 @@ type Tab = 'feed' | 'hangouts' | 'friends'
 
 /** A share link is the one route that must work signed out, so it is checked first. */
 const sharedId = new URLSearchParams(window.location.search).get('s')
+
+// An invite has to survive magic-link sign-in, which means leaving for an inbox
+// and coming back on a fresh page load, so it is stashed before anything renders.
+const invited = readInviteFromUrl()
+if (invited) {
+  rememberInvite(invited)
+  clearInviteFromUrl()
+}
 
 export default function App() {
   if (sharedId) return <SharePage shareId={sharedId} />
@@ -56,6 +65,7 @@ function Main() {
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [sharing, setSharing] = useState<{ plan: Plan; url: string } | null>(null)
   const [picked, setPicked] = useState<string | null>(null)
+  const [inviteNote, setInviteNote] = useState<string | null>(null)
   const pickedRef = useRef<HTMLDivElement>(null)
 
   const ctx = useMemo<FeedContext | null>(() => {
@@ -69,6 +79,18 @@ function Main() {
   useEffect(() => {
     if (picked) pickedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [picked])
+
+  // Someone opened an invite link. Send the request once there is a session to
+  // send it with, then forget it so a refresh does not send it again.
+  useEffect(() => {
+    const username = pendingInvite()
+    if (!username || !store || !snap) return
+    forgetInvite()
+    void store
+      .sendFriendRequest(username)
+      .then((problem) => setInviteNote(problem ?? `Friend request sent to @${username}.`))
+      .catch(() => setInviteNote(`Could not send the request to @${username}.`))
+  }, [store, snap])
 
   if (needsAuth) return <Auth />
   if (!snap || !store || !ctx) {
@@ -131,6 +153,13 @@ function Main() {
         </div>
       )}
 
+      {inviteNote && (
+        <div className="mx-4 mt-3 flex items-start gap-2 text-xs bg-ok/10 border border-ok rounded-xl px-3 py-2">
+          <span className="flex-1 text-ok">{inviteNote}</span>
+          <button onClick={() => setInviteNote(null)} className="text-ok font-bold">ok</button>
+        </div>
+      )}
+
       {demo && (
         <div className="mx-4 mt-3 text-[11px] text-mute bg-card border border-line rounded-xl px-3 py-2">
           Demo mode. The other people are simulated and deliberately flaky: about half reply, some never vote.
@@ -150,6 +179,13 @@ function Main() {
               onReset={() => { setFilters(emptyFilters); setPicked(null) }}
               onSurprise={rollDice}
             />
+
+            {snap.friends.length === 0 && (
+              <div className="flex items-center justify-between gap-3 text-xs bg-card border border-line rounded-xl px-3 py-2">
+                <span className="text-mute">Being down only does something once a friend is here.</span>
+                <button onClick={() => setTab('friends')} className="tap text-brand font-bold shrink-0">invite</button>
+              </div>
+            )}
 
             {picked && (
               <div className="flex items-center justify-between text-xs bg-brand2/10 border border-brand2 rounded-xl px-3 py-2">

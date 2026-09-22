@@ -217,6 +217,25 @@ await crash.waitForSelector('text=Night market crawl')
 log('"start fresh" clears it and the app comes back')
 await crash.close()
 
+// --- invite links: the only way a friend gets in without knowing your username ---
+await page.getByRole('button', { name: /^friends/ }).click()
+await page.waitForSelector('text=Invite a friend')
+const inviteShown = await page.locator('text=/\\?add=clark/').count()
+log(`friends tab offers an invite link: ${inviteShown > 0}`)
+
+const inviteLink = `${BASE}?add=omar`
+const invitee = await ctx.newPage()
+await invitee.goto(inviteLink)
+await invitee.waitForSelector('text=/Friend request sent to @omar|Already friends|Request already sent/')
+const noteText = await invitee.locator('text=/Friend request sent to @omar|Already friends|Request already sent/').first().innerText()
+const urlAfter = invitee.url()
+log(`opening an invite sends the request: "${noteText}"; url cleaned: ${!urlAfter.includes('add=')}`)
+await invitee.reload()
+await invitee.waitForSelector('text=Night market crawl')
+const resent = await invitee.locator('text=/Friend request sent to @omar/').count()
+log(`a refresh does not send it again: ${resent === 0}`)
+await invitee.close()
+
 // --- it still opens with no connection ---
 const off = await ctx.newPage()
 await off.goto(BASE)

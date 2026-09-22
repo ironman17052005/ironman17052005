@@ -23,6 +23,22 @@ The idea is public. Who is going out tonight is not.
 7. **Send to a group chat** makes a public link. Friends tap "I'm down" from it
    with a first name. No account, no download.
 
+## Getting your friends in
+
+Adding someone by username assumes you already know it, and in live mode a
+username is derived from an email prefix, so nobody can guess a friend's. The
+Friends tab therefore leads with an **invite link**. They open it and the request
+is waiting for you to accept.
+
+The link survives magic-link sign-in: opening an invite while signed out means
+leaving for an inbox and coming back on a fresh page load, so the invite is
+stashed before anything renders and sent once there is a session. The sign-in
+screen says who invited them, and the URL is cleaned so a refresh does not send
+the request twice.
+
+Until one friend is in, the feed says so and points at the invite. Being down on
+your own does nothing, and the app should admit that rather than look broken.
+
 ## Finding something to do
 
 - **Search** across the title, area, vibe, steps and tips. Prefixes count, so
@@ -92,7 +108,8 @@ force a reply when you want to walk the whole loop.
    your own city before launching anywhere but Houston.
 4. Enable email magic links under Authentication.
 5. Copy `.env.example` to `.env` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
-6. `npm run dev`, then sign in. Add friends by `@username`; they must accept.
+6. `npm run dev`, then sign in and send yourself the invite link from the Friends
+   tab. Adding by `@username` also works if you know it. Either way they accept.
 
 Deploy anywhere static. Vercel works with zero config.
 

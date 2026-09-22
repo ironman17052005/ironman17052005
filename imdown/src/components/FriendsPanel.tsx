@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FriendRequest, Id, Profile } from '../types'
+import { InviteCard } from './InviteCard'
 import { MIN_THRESHOLD } from '../types'
 
 interface Props {
@@ -29,6 +30,8 @@ export function FriendsPanel({ me, friends, people, incoming, outgoing, demo, on
 
   return (
     <div className="space-y-4">
+      <InviteCard username={me.username} friendCount={friends.length} />
+
       <div className="bg-card border border-line rounded-2xl p-4 space-y-3">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-full bg-brand text-black grid place-items-center text-xl">{me.emoji}</span>
@@ -88,7 +91,11 @@ export function FriendsPanel({ me, friends, people, incoming, outgoing, demo, on
             <button onClick={() => onRemove(id)} className="tap text-mute text-xs">remove</button>
           </div>
         ))}
-        {friends.length === 0 && <div className="text-mute text-sm">No friends yet. The feed is dead without them. Ask two.</div>}
+        {friends.length === 0 && (
+          <div className="text-mute text-sm">
+            Nobody yet. Send the invite link above; adding by username only works if you already know it.
+          </div>
+        )}
       </div>
     </div>
   )

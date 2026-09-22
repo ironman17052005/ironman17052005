@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { pendingInvite } from '../lib/invite'
 
 /** Magic-link sign in for live mode. Username is set from the email prefix by a DB trigger. */
 export function Auth() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  // Someone who arrived from an invite should know why they are being asked to
+  // sign in, and that the request will be waiting when they come back.
+  const invite = pendingInvite()
 
   const send = async () => {
     if (!supabase) return
@@ -18,7 +22,14 @@ export function Auth() {
     <div className="min-h-full flex items-center justify-center p-6">
       <div className="w-full max-w-sm bg-card border border-line rounded-2xl p-6 space-y-4">
         <div className="text-2xl font-black">i'm down</div>
-        <p className="text-mute text-sm">Plans your friends actually did. Tap one, and when three of you are down, it becomes real.</p>
+        {invite ? (
+          <p className="text-sm">
+            <span className="font-bold">@{invite}</span>
+            <span className="text-mute"> invited you. Sign in and the request goes to them.</span>
+          </p>
+        ) : (
+          <p className="text-mute text-sm">Plans your friends actually did. Tap one, and when enough of you are down, it becomes real.</p>
+        )}
         {sent ? (
           <p className="text-ok">Check your email for the sign-in link.</p>
         ) : (

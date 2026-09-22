@@ -132,6 +132,7 @@ imdown/
   src/data/shareApi.ts         the signed-out share page data path
   src/data/useStore.ts         picks a store, surfaces errors
   src/lib/coalesce.ts          collapses overlapping refreshes into one round trip
+  src/lib/invite.ts            invite links that survive magic-link sign-in
   src/lib/image.ts             shrinks a recap photo before it is stored
   public/sw.js                 offline shell
   src/components/              PlanCard, HangoutCard, FilterBar, FriendsPanel,
